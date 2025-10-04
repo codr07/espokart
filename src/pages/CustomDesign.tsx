@@ -3,8 +3,25 @@ import { motion } from 'framer-motion';
 import Navigation from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shirt, ShoppingBag, CircleDot, Hand, Zap } from 'lucide-react';
+import { ThreeEditor } from '@/components/ThreeEditor';
+import { DesignControls } from '@/components/DesignControls';
+import { Shirt, ShoppingBag, CircleDot, Hand, Zap, Download, Save } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+interface TextElement {
+  id: string;
+  text: string;
+  position: [number, number, number];
+  color: string;
+  size: number;
+}
+
+interface LogoElement {
+  id: string;
+  url: string;
+  position: [number, number, number];
+  scale: number;
+}
 
 const products = [
   { id: 'jersey', name: 'Jersey', icon: Shirt },
@@ -18,14 +35,63 @@ const products = [
 ];
 
 const CustomDesign = () => {
+  const { toast } = useToast();
   const [selectedProduct, setSelectedProduct] = useState(products[0].id);
-  const [canvasColor, setCanvasColor] = useState('#1a1a1a');
-  const [textColor, setTextColor] = useState('#00ffff');
+  const [baseColor, setBaseColor] = useState('#1a1a1a');
+  const [textElements, setTextElements] = useState<TextElement[]>([]);
+  const [logoElements, setLogoElements] = useState<LogoElement[]>([]);
 
-  const colors = [
-    '#000000', '#ffffff', '#00ffff', '#ff00ff', '#00ff00', 
-    '#ff0000', '#0000ff', '#ffff00', '#ff6600', '#6600ff'
-  ];
+  const handleAddText = (element: Omit<TextElement, 'id'>) => {
+    const newElement: TextElement = {
+      ...element,
+      id: `text-${Date.now()}`,
+    };
+    setTextElements([...textElements, newElement]);
+    toast({
+      title: 'Text added',
+      description: 'Text element added to your design',
+    });
+  };
+
+  const handleAddLogo = (element: Omit<LogoElement, 'id'>) => {
+    const newElement: LogoElement = {
+      ...element,
+      id: `logo-${Date.now()}`,
+    };
+    setLogoElements([...logoElements, newElement]);
+    toast({
+      title: 'Logo added',
+      description: 'Logo element added to your design',
+    });
+  };
+
+  const handleSaveDesign = () => {
+    const design = {
+      product: selectedProduct,
+      baseColor,
+      textElements,
+      logoElements,
+      createdAt: new Date().toISOString(),
+    };
+    
+    // Save to localStorage for now
+    localStorage.setItem('custom-design', JSON.stringify(design));
+    
+    toast({
+      title: 'Design saved!',
+      description: 'Your design has been saved successfully',
+    });
+  };
+
+  const handleReset = () => {
+    setTextElements([]);
+    setLogoElements([]);
+    setBaseColor('#1a1a1a');
+    toast({
+      title: 'Design reset',
+      description: 'All elements have been cleared',
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -38,134 +104,131 @@ const CustomDesign = () => {
           transition={{ duration: 0.5 }}
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center">
-            <span className="text-neon-blue">Custom</span>{' '}
-            <span className="text-neon-magenta">Design Studio</span>
+            <span className="text-neon-blue">3D Design</span>{' '}
+            <span className="text-neon-magenta">Studio</span>
           </h1>
-          <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
-            Create your own unique gaming merchandise. Choose a product and customize it with your style.
+          <p className="text-muted-foreground text-center mb-8 max-w-2xl mx-auto">
+            Design your custom merchandise in 3D. Rotate, add text and logos at any position.
           </p>
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid lg:grid-cols-4 gap-6">
             {/* Product Selection */}
-            <Card className="p-6 bg-card border-primary/20">
+            <Card className="p-6 bg-card border-primary/20 lg:col-span-1">
               <h3 className="text-xl font-bold mb-4 text-neon-blue">Select Product</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
                 {products.map((product) => {
                   const Icon = product.icon;
                   return (
                     <Button
                       key={product.id}
                       variant={selectedProduct === product.id ? 'default' : 'outline'}
-                      className={`h-auto py-4 flex flex-col gap-2 ${
+                      className={`h-auto py-4 flex flex-col lg:flex-row items-center gap-2 ${
                         selectedProduct === product.id ? 'neon-glow-blue' : ''
                       }`}
                       onClick={() => setSelectedProduct(product.id)}
                     >
-                      <Icon className="h-6 w-6" />
-                      <span className="text-xs">{product.name}</span>
+                      <Icon className="h-5 w-5" />
+                      <span className="text-sm">{product.name}</span>
                     </Button>
                   );
                 })}
               </div>
-            </Card>
 
-            {/* Design Canvas */}
-            <Card className="lg:col-span-2 p-6 bg-card border-primary/20">
-              <h3 className="text-xl font-bold mb-4 text-neon-magenta">Design Canvas</h3>
-              
-              <Tabs defaultValue="design" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="design">Design</TabsTrigger>
-                  <TabsTrigger value="colors">Colors</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="design" className="space-y-6">
-                  {/* Canvas Preview */}
-                  <div 
-                    className="aspect-square rounded-lg border-2 border-primary/40 flex items-center justify-center relative overflow-hidden"
-                    style={{ backgroundColor: canvasColor }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-secondary/10" />
-                    <div className="relative z-10 text-center p-8">
-                      <h2 
-                        className="text-4xl font-bold mb-4"
-                        style={{ color: textColor }}
-                      >
-                        YOUR DESIGN
-                      </h2>
-                      <p className="text-lg opacity-80" style={{ color: textColor }}>
-                        {products.find(p => p.id === selectedProduct)?.name}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Add Text</label>
-                      <input
-                        type="text"
-                        placeholder="Enter text..."
-                        className="w-full px-4 py-2 rounded-lg bg-input border border-border text-foreground"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Text Size</label>
-                      <input
-                        type="range"
-                        min="12"
-                        max="72"
-                        defaultValue="32"
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="colors" className="space-y-6">
-                  <div>
-                    <label className="text-sm font-medium mb-3 block">Background Color</label>
-                    <div className="grid grid-cols-5 gap-3">
-                      {colors.map((color) => (
-                        <button
-                          key={`bg-${color}`}
-                          className={`w-full aspect-square rounded-lg border-2 transition-all ${
-                            canvasColor === color ? 'border-primary scale-110' : 'border-border hover:scale-105'
-                          }`}
-                          style={{ backgroundColor: color }}
-                          onClick={() => setCanvasColor(color)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-3 block">Text Color</label>
-                    <div className="grid grid-cols-5 gap-3">
-                      {colors.map((color) => (
-                        <button
-                          key={`text-${color}`}
-                          className={`w-full aspect-square rounded-lg border-2 transition-all ${
-                            textColor === color ? 'border-primary scale-110' : 'border-border hover:scale-105'
-                          }`}
-                          style={{ backgroundColor: color }}
-                          onClick={() => setTextColor(color)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-
-              <div className="mt-6 flex gap-4">
-                <Button className="flex-1 neon-glow-blue" size="lg">
+              <div className="mt-6 space-y-3">
+                <Button 
+                  onClick={handleSaveDesign} 
+                  className="w-full neon-glow-blue"
+                  size="lg"
+                >
+                  <Save className="mr-2 h-4 w-4" />
                   Save Design
                 </Button>
-                <Button variant="outline" size="lg" className="border-primary/20">
+                <Button 
+                  variant="outline" 
+                  onClick={handleReset}
+                  className="w-full border-primary/20"
+                  size="lg"
+                >
                   Reset
                 </Button>
               </div>
             </Card>
+
+            {/* 3D Canvas */}
+            <div className="lg:col-span-2">
+              <Card className="p-4 bg-card border-primary/20 overflow-hidden">
+                <div className="bg-background/50 rounded-lg overflow-hidden">
+                  <ThreeEditor
+                    productType={selectedProduct}
+                    baseColor={baseColor}
+                    textElements={textElements}
+                    logoElements={logoElements}
+                  />
+                </div>
+                <div className="mt-4 text-center text-sm text-muted-foreground">
+                  <p>Drag to rotate • Scroll to zoom • Right-click to pan</p>
+                </div>
+              </Card>
+            </div>
+
+            {/* Design Controls */}
+            <div className="lg:col-span-1">
+              <DesignControls
+                onAddText={handleAddText}
+                onAddLogo={handleAddLogo}
+                onColorChange={setBaseColor}
+                baseColor={baseColor}
+              />
+            </div>
           </div>
+
+          {/* Elements List */}
+          {(textElements.length > 0 || logoElements.length > 0) && (
+            <Card className="mt-6 p-6 bg-card border-primary/20">
+              <h3 className="text-xl font-bold mb-4">Design Elements</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                {textElements.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-2 text-neon-blue">Text Elements</h4>
+                    <div className="space-y-2">
+                      {textElements.map((element) => (
+                        <div key={element.id} className="p-3 bg-background/50 rounded-lg flex justify-between items-center">
+                          <span style={{ color: element.color }}>{element.text}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setTextElements(textElements.filter(e => e.id !== element.id))}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {logoElements.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold mb-2 text-neon-magenta">Logo Elements</h4>
+                    <div className="space-y-2">
+                      {logoElements.map((element) => (
+                        <div key={element.id} className="p-3 bg-background/50 rounded-lg flex justify-between items-center">
+                          <span className="text-sm truncate">{element.url}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setLogoElements(logoElements.filter(e => e.id !== element.id))}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
         </motion.div>
       </main>
     </div>
