@@ -11,6 +11,7 @@ import Cart from "./pages/Cart";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
 import CustomDesign from "./pages/CustomDesign";
+import AdminCMS from "./pages/AdminCMS";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/account" element={<Account />} />
             <Route path="/custom" element={<CustomDesign />} />
+            <Route path="/admin" element={<AdminCMS />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

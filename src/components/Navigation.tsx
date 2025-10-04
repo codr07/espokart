@@ -1,13 +1,35 @@
-import { ShoppingCart, User, Menu, X, LogOut } from "lucide-react";
-import { useState } from "react";
+import { ShoppingCart, User, Menu, X, LogOut, Shield } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    checkAdminRole();
+  }, [user]);
+
+  const checkAdminRole = async () => {
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    setIsAdmin(!!data);
+  };
 
   const navLinks = [
     { name: "Apparel", path: "/products?category=apparel" },
@@ -48,6 +70,13 @@ const Navigation = () => {
           <div className="flex items-center space-x-4">
             {user ? (
               <>
+                {isAdmin && (
+                  <Link to="/admin" className="hidden md:block">
+                    <Button variant="ghost" size="icon" title="Admin CMS">
+                      <Shield className="h-5 w-5 text-primary" />
+                    </Button>
+                  </Link>
+                )}
                 <Link to="/account" className="hidden md:block">
                   <Button variant="ghost" size="icon">
                     <User className="h-5 w-5" />
@@ -109,6 +138,15 @@ const Navigation = () => {
               ))}
               {user ? (
                 <>
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="block text-foreground hover:text-primary transition-colors py-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Admin CMS
+                    </Link>
+                  )}
                   <Link
                     to="/account"
                     className="block text-foreground hover:text-primary transition-colors py-2"
