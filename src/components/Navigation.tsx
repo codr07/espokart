@@ -1,11 +1,13 @@
-import { ShoppingCart, User, Menu, X } from "lucide-react";
+import { ShoppingCart, User, Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 
 const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   const navLinks = [
     { name: "Apparel", path: "/products?category=apparel" },
@@ -44,15 +46,37 @@ const Navigation = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon" className="hidden md:flex">
-              <User className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="relative">
-              <ShoppingCart className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                0
-              </span>
-            </Button>
+            {user ? (
+              <>
+                <Link to="/account" className="hidden md:block">
+                  <Button variant="ghost" size="icon">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </Link>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="hidden md:flex"
+                  onClick={() => signOut()}
+                >
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </>
+            ) : (
+              <Link to="/auth" className="hidden md:block">
+                <Button variant="ghost" size="icon">
+                  <User className="h-5 w-5" />
+                </Button>
+              </Link>
+            )}
+            <Link to="/cart">
+              <Button variant="ghost" size="icon" className="relative">
+                <ShoppingCart className="h-5 w-5" />
+                <span className="absolute -top-1 -right-1 bg-secondary text-secondary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  0
+                </span>
+              </Button>
+            </Link>
             <Button
               variant="ghost"
               size="icon"
@@ -83,13 +107,34 @@ const Navigation = () => {
                   {link.name}
                 </Link>
               ))}
-              <Link
-                to="/auth"
-                className="block text-foreground hover:text-primary transition-colors py-2"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Account
-              </Link>
+              {user ? (
+                <>
+                  <Link
+                    to="/account"
+                    className="block text-foreground hover:text-primary transition-colors py-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Account
+                  </Link>
+                  <button
+                    onClick={() => {
+                      signOut();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left text-foreground hover:text-primary transition-colors py-2"
+                  >
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/auth"
+                  className="block text-foreground hover:text-primary transition-colors py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Login / Sign Up
+                </Link>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
