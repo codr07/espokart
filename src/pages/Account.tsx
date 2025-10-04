@@ -1,28 +1,35 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { supabase } from '@/integrations/supabase/client';
+import Navigation from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import Navigation from '@/components/Navigation';
-import { Shield, User } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { User, Mail, Shield, Loader2 } from 'lucide-react';
 
-type Profile = {
-  gamertag: string | null;
+interface Profile {
+  id: string;
   email: string;
-};
+  gamertag: string | null;
+  avatar_url: string | null;
+}
 
-export default function Account() {
-  const { user, loading: authLoading, signOut } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [gamertag, setGamertag] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [updating, setUpdating] = useState(false);
+interface UserRole {
+  role: string;
+}
+
+const Account = () => {
+  const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [gamertag, setGamertag] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -32,72 +39,76 @@ export default function Account() {
 
   useEffect(() => {
     if (user) {
-      fetchProfile();
-      checkAdminRole();
+      loadProfile();
+      loadRoles();
     }
   }, [user]);
 
-  const fetchProfile = async () => {
-    if (!user) return;
+  const loadProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('gamertag, email')
-      .eq('id', user.id)
-      .single();
+      if (error) throw error;
 
-    if (error) {
+      setProfile(data);
+      setGamertag(data.gamertag || '');
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to load profile",
-        variant: "destructive",
+        title: 'Error loading profile',
+        description: error.message,
+        variant: 'destructive',
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    setProfile(data);
-    setGamertag(data.gamertag || '');
   };
 
-  const checkAdminRole = async () => {
-    if (!user) return;
+  const loadRoles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user?.id);
 
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('role', 'admin')
-      .single();
+      if (error) throw error;
 
-    setIsAdmin(!!data);
+      setRoles(data.map((r: UserRole) => r.role));
+    } catch (error: any) {
+      console.error('Error loading roles:', error);
+    }
   };
 
-  const updateProfile = async (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    setIsSaving(true);
 
-    setUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ gamertag })
+        .eq('id', user?.id);
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ gamertag })
-      .eq('id', user.id);
+      if (error) throw error;
 
-    if (error) {
       toast({
-        title: "Error",
-        description: "Failed to update profile",
-        variant: "destructive",
+        title: 'Profile updated',
+        description: 'Your profile has been updated successfully.',
       });
-    } else {
+
+      loadProfile();
+    } catch (error: any) {
       toast({
-        title: "Success",
-        description: "Profile updated successfully",
+        title: 'Error updating profile',
+        description: error.message,
+        variant: 'destructive',
       });
-      fetchProfile();
+    } finally {
+      setIsSaving(false);
     }
-
-    setUpdating(false);
   };
 
   const handleSignOut = async () => {
@@ -105,13 +116,10 @@ export default function Account() {
     navigate('/');
   };
 
-  if (authLoading || !user || !profile) {
+  if (isLoading || authLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
-        <div className="container mx-auto px-4 pt-32 text-center">
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -120,69 +128,87 @@ export default function Account() {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <div className="container mx-auto px-4 pt-32 pb-20">
+      <main className="container mx-auto px-4 pt-32 pb-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
           className="max-w-2xl mx-auto"
         >
-          <div className="glass-card p-8 border-2 border-neon-blue/30">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-3xl font-display font-bold neon-text">
-                Account Settings
-              </h1>
-              {isAdmin && (
-                <div className="flex items-center gap-2 px-3 py-1 bg-neon-magenta/20 border border-neon-magenta/50 rounded-lg">
-                  <Shield className="w-4 h-4 text-neon-magenta" />
-                  <span className="text-sm text-neon-magenta font-semibold">Admin</span>
+          <h1 className="text-4xl font-bold mb-8 neon-text">My Account</h1>
+
+          <div className="glass-panel p-8 space-y-8">
+            <div className="flex items-center gap-2 flex-wrap">
+              {roles.map((role) => (
+                <div
+                  key={role}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/40"
+                >
+                  <Shield className="h-4 w-4" />
+                  <span className="text-sm font-medium capitalize">{role}</span>
                 </div>
-              )}
+              ))}
             </div>
 
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 p-4 bg-background/50 rounded-lg border border-neon-blue/20">
-                <User className="w-5 h-5 text-neon-blue" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium">{profile.email}</p>
-                </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email
+              </Label>
+              <Input
+                value={profile?.email || ''}
+                disabled
+                className="bg-background/50 border-primary/20"
+              />
+            </div>
+
+            <form onSubmit={handleUpdateProfile} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="gamertag" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Gamertag
+                </Label>
+                <Input
+                  id="gamertag"
+                  type="text"
+                  value={gamertag}
+                  onChange={(e) => setGamertag(e.target.value)}
+                  placeholder="Enter your gamertag"
+                  className="bg-background/50 border-primary/20"
+                />
               </div>
 
-              <form onSubmit={updateProfile} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="gamertag">Gamertag</Label>
-                  <Input
-                    id="gamertag"
-                    type="text"
-                    placeholder="Enter your gamertag"
-                    value={gamertag}
-                    onChange={(e) => setGamertag(e.target.value)}
-                    className="bg-background/50 border-neon-blue/30"
-                  />
-                </div>
-
+              <div className="flex gap-4">
                 <Button
                   type="submit"
-                  disabled={updating}
-                  className="w-full"
+                  className="neon-glow"
+                  disabled={isSaving}
                 >
-                  {updating ? 'Updating...' : 'Update Profile'}
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Update Profile'
+                  )}
                 </Button>
-              </form>
 
-              <div className="pt-6 border-t border-neon-blue/20">
                 <Button
+                  type="button"
+                  variant="outline"
                   onClick={handleSignOut}
-                  variant="destructive"
-                  className="w-full"
+                  className="border-primary/20"
                 >
                   Sign Out
                 </Button>
               </div>
-            </div>
+            </form>
           </div>
         </motion.div>
-      </div>
+      </main>
     </div>
   );
-}
+};
+
+export default Account;
