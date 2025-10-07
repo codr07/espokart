@@ -12,6 +12,7 @@ import Auth from "./pages/Auth";
 import Account from "./pages/Account";
 import AdminCMS from "./pages/AdminCMS";
 import Checkout from "./pages/Checkout";
+import CustomDesign from "./pages/CustomDesign";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/custom" element={<CustomDesign />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/account" element={<Account />} />
             <Route path="/admin" element={<AdminCMS />} />

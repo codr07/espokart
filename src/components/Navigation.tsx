@@ -35,6 +35,7 @@ const Navigation = () => {
     { name: "Apparel", path: "/products?category=apparel" },
     { name: "Gear", path: "/products?category=gear" },
     { name: "Decor", path: "/products?category=decor" },
+    { name: "Customise", path: "/custom" },
   ];
 
   return (
