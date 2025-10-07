@@ -42,7 +42,7 @@ const ProductCard = ({ id, name, price, image, category }: ProductCardProps) => 
           </div>
           
           <div className="flex items-center justify-between">
-            <span className="text-xl font-bold text-neon-blue">${price}</span>
+            <span className="text-xl font-bold text-neon-blue">₹{price}</span>
             <Button variant="cyber" size="sm" className="gap-2">
               <ShoppingCart className="h-4 w-4" />
               Add

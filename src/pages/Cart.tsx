@@ -1,51 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Minus } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import productJersey from "@/assets/product-jersey-1.png";
-import productHoodie from "@/assets/product-hoodie-1.png";
 
 const Cart = () => {
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "Cyber Pro Jersey",
-      price: 79.99,
-      quantity: 1,
-      size: "M",
-      image: productJersey,
-    },
-    {
-      id: 2,
-      name: "Neon Strike Hoodie",
-      price: 89.99,
-      quantity: 1,
-      size: "L",
-      image: productHoodie,
-    },
-  ]);
+  const [cartItems, setCartItems] = useState<any[]>([]);
 
-  const updateQuantity = (id: number, delta: number) => {
-    setCartItems(
-      cartItems.map((item) =>
-        item.id === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
+  useEffect(() => {
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    setCartItems(cart);
+  }, []);
+
+  const updateQuantity = (id: string, size: string, delta: number) => {
+    const updated = cartItems.map((item) =>
+      item.id === id && item.size === size
+        ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+        : item
     );
+    setCartItems(updated);
+    localStorage.setItem("cart", JSON.stringify(updated));
   };
 
-  const removeItem = (id: number) => {
-    setCartItems(cartItems.filter((item) => item.id !== id));
+  const removeItem = (id: string, size: string) => {
+    const updated = cartItems.filter((item) => !(item.id === id && item.size === size));
+    setCartItems(updated);
+    localStorage.setItem("cart", JSON.stringify(updated));
   };
 
   const subtotal = cartItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
-  const shipping = 10.0;
+  const shipping = 100;
   const total = subtotal + shipping;
 
   return (
@@ -82,7 +70,7 @@ const Cart = () => {
               <div className="lg:col-span-2 space-y-4">
                 {cartItems.map((item, index) => (
                   <motion.div
-                    key={item.id}
+                    key={`${item.id}-${item.size}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
@@ -104,16 +92,16 @@ const Cart = () => {
                         <p className="text-sm text-muted-foreground mb-2">
                           Size: {item.size}
                         </p>
-                        <p className="text-neon-blue font-bold">
-                          ${item.price.toFixed(2)}
-                        </p>
+                      <p className="text-neon-blue font-bold">
+                        ₹{item.price.toFixed(2)}
+                      </p>
                       </div>
 
                       <div className="flex flex-col items-end justify-between">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => removeItem(item.id, item.size)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -122,7 +110,7 @@ const Cart = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => updateQuantity(item.id, -1)}
+                            onClick={() => updateQuantity(item.id, item.size, -1)}
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
@@ -132,7 +120,7 @@ const Cart = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => updateQuantity(item.id, 1)}
+                            onClick={() => updateQuantity(item.id, item.size, 1)}
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
@@ -153,26 +141,28 @@ const Cart = () => {
                   <h2 className="text-2xl font-bold mb-4">Order Summary</h2>
 
                   <div className="space-y-2">
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Subtotal</span>
-                      <span>${subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Shipping</span>
-                      <span>${shipping.toFixed(2)}</span>
-                    </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span>₹{subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Shipping</span>
+                  <span>₹{shipping.toFixed(2)}</span>
+                </div>
                   </div>
 
                   <div className="border-t border-border pt-4">
-                    <div className="flex justify-between text-xl font-bold">
-                      <span>Total</span>
-                      <span className="text-neon-blue">${total.toFixed(2)}</span>
-                    </div>
+                  <div className="flex justify-between text-xl font-bold">
+                    <span>Total</span>
+                    <span className="text-neon-blue">₹{total.toFixed(2)}</span>
                   </div>
+                </div>
 
+                <Link to="/checkout">
                   <Button variant="neon" className="w-full" size="lg">
                     Proceed to Checkout
                   </Button>
+                </Link>
 
                   <Link to="/products">
                     <Button variant="ghost" className="w-full">

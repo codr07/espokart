@@ -1,37 +1,58 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { motion } from "framer-motion";
-import productJersey from "@/assets/product-jersey-1.png";
-import productHoodie from "@/assets/product-hoodie-1.png";
-import productMousepad from "@/assets/product-mousepad-1.png";
-import productCap from "@/assets/product-cap-1.png";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Products = () => {
   const [searchParams] = useSearchParams();
-  const category = searchParams.get("category");
-  const [priceRange, setPriceRange] = useState([0, 200]);
+  const categorySlug = searchParams.get("category");
+  const [priceRange, setPriceRange] = useState([0, 10000]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  // Mock products data
-  const allProducts = [
-    { id: 1, name: "Cyber Pro Jersey", price: 79.99, image: productJersey, category: "apparel" },
-    { id: 2, name: "Neon Strike Hoodie", price: 89.99, image: productHoodie, category: "apparel" },
-    { id: 3, name: "Circuit Gaming Pad", price: 29.99, image: productMousepad, category: "gear" },
-    { id: 4, name: "Electro Cap", price: 34.99, image: productCap, category: "apparel" },
-    { id: 5, name: "Quantum Jersey", price: 74.99, image: productJersey, category: "apparel" },
-    { id: 6, name: "Vapor Hoodie", price: 94.99, image: productHoodie, category: "apparel" },
-    { id: 7, name: "Hyper Mousepad", price: 39.99, image: productMousepad, category: "gear" },
-    { id: 8, name: "Pulse Cap", price: 29.99, image: productCap, category: "apparel" },
-  ];
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const filteredProducts = allProducts.filter((product) => {
-    const matchesCategory = !category || product.category === category;
+  const loadData = async () => {
+    try {
+      const [productsResponse, categoriesResponse] = await Promise.all([
+        supabase.from("products").select("*"),
+        supabase.from("categories").select("*"),
+      ]);
+
+      if (productsResponse.error) throw productsResponse.error;
+      if (categoriesResponse.error) throw categoriesResponse.error;
+
+      setProducts(productsResponse.data || []);
+      setCategories(categoriesResponse.data || []);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load products",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredProducts = products.filter((product) => {
+    const category = categories.find((c) => c.id === product.category_id);
+    const matchesCategory = !categorySlug || category?.slug === categorySlug;
     const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
     return matchesCategory && matchesPrice;
   });
+
+  const currentCategory = categories.find((c) => c.slug === categorySlug);
 
   return (
     <div className="min-h-screen bg-background">
@@ -45,9 +66,9 @@ const Products = () => {
             className="mb-8"
           >
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              {category ? (
+              {currentCategory ? (
                 <>
-                  {category.charAt(0).toUpperCase() + category.slice(1)}{" "}
+                  {currentCategory.name}{" "}
                   <span className="text-neon-blue">Collection</span>
                 </>
               ) : (
@@ -62,7 +83,6 @@ const Products = () => {
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Filters Sidebar */}
             <motion.aside
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -72,24 +92,23 @@ const Products = () => {
                 <div>
                   <h3 className="text-lg font-semibold mb-4">Categories</h3>
                   <div className="space-y-2">
-                    {["All", "Apparel", "Gear", "Decor"].map((cat) => (
+                    <Button
+                      variant={!categorySlug ? "default" : "ghost"}
+                      className="w-full justify-start"
+                      onClick={() => (window.location.href = "/products")}
+                    >
+                      All
+                    </Button>
+                    {categories.map((cat) => (
                       <Button
-                        key={cat}
-                        variant={
-                          (cat === "All" && !category) ||
-                          cat.toLowerCase() === category
-                            ? "default"
-                            : "ghost"
-                        }
+                        key={cat.id}
+                        variant={categorySlug === cat.slug ? "default" : "ghost"}
                         className="w-full justify-start"
-                        onClick={() => {
-                          window.location.href =
-                            cat === "All"
-                              ? "/products"
-                              : `/products?category=${cat.toLowerCase()}`;
-                        }}
+                        onClick={() =>
+                          (window.location.href = `/products?category=${cat.slug}`)
+                        }
                       >
-                        {cat}
+                        {cat.name}
                       </Button>
                     ))}
                   </div>
@@ -101,45 +120,60 @@ const Products = () => {
                     <Slider
                       value={priceRange}
                       onValueChange={setPriceRange}
-                      max={200}
-                      step={10}
+                      max={10000}
+                      step={100}
                       className="w-full"
                     />
                     <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>${priceRange[0]}</span>
-                      <span>${priceRange[1]}</span>
+                      <span>₹{priceRange[0]}</span>
+                      <span>₹{priceRange[1]}</span>
                     </div>
                   </div>
                 </div>
               </div>
             </motion.aside>
 
-            {/* Products Grid */}
             <div className="lg:col-span-3">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
-                {filteredProducts.map((product, index) => (
+              {loading ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Loading products...</p>
+                </div>
+              ) : (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                  >
+                    {filteredProducts.map((product, index) => (
                   <motion.div
                     key={product.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                   >
-                    <ProductCard {...product} />
+                    <ProductCard
+                      id={product.id}
+                      name={product.name}
+                      price={product.price}
+                      image={product.image_url}
+                      category={
+                        categories.find((c) => c.id === product.category_id)?.name || "Uncategorized"
+                      }
+                    />
                   </motion.div>
-                ))}
-              </motion.div>
+                    ))}
+                  </motion.div>
 
-              {filteredProducts.length === 0 && (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground text-lg">
-                    No products found. Try adjusting your filters.
-                  </p>
-                </div>
+                  {filteredProducts.length === 0 && (
+                    <div className="text-center py-12">
+                      <p className="text-muted-foreground text-lg">
+                        No products found. Try adjusting your filters.
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
